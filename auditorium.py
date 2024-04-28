@@ -56,12 +56,12 @@ def auditorium_new_name(auditorium, data):
     while True:
         type_again = False
         auditorium_name = input(
-            "Auditorium name (spaces, alphabet letters and digits only): "
+            "Auditorium name (spaces, alphabet letters and digits only - type 'back' to go back): "
         )
         auditorium_name = auditorium_name.strip()
 
-        # if auditorium_name == "back":
-        #     break
+        if auditorium_name == "back":
+            break
 
         for char in auditorium_name:
             if char.isalnum() or char == " ":
@@ -81,7 +81,7 @@ def auditorium_new_name(auditorium, data):
             if confirm_name == "y" or confirm_name == "n":
                 return confirm_name, auditorium_name, auditorium, data
 
-    # main()
+    main()
 
 
 def create_auditorium(data):
@@ -175,15 +175,18 @@ def add_row(auditorium, data):
 
     while True:
         try:
-            number_seats = int(input(f"How many seats to add? (max 26 seats): "))
+            print(
+                "Note: each line in a row can contain up to 26 seats, with a maximum of 9 lines."
+            )
+            number_seats = int(input("How many seats to add? (max 234 seats): "))
         except ValueError:
             print("Please enter a valid number only.")
             continue
         if number_seats < 1:
             print("You need at least to add ONE seat.")
             continue
-        if number_seats > 26:
-            print("Too many seats, rows can contain up to 26 seats.")
+        if number_seats > 234:
+            print("Too many seats, rows can contain up to 234 seats.")
             continue
         break
     row = []
@@ -291,20 +294,95 @@ def delete_row(auditorium, data):
             indent=4,
         )
 
+    menu_do_next(data)
+
+
+def seats_alpha_num(row):
+    seat_letters = ""
+    seats = ""
+    seats_added = 0
+    remaining = len(row)
+
+    for s in range(len(row)):
+        seat_number = (s // 26) + 1
+        seat_letters += (
+            f"{alphabet[s-(len(alphabet)*(s//len(alphabet)))]}{seat_number} | "
+        )
+        seats += f" {row[s]} | "
+        seats_added += 1
+        remaining -= 1
+        if seats_added == 26 or remaining == 0:
+            print(f"Seat number  - {seat_letters[:-2]}")
+            print(f"Availability - {seats[:-2]}")
+            seat_letters = ""
+            seats = ""
+            seats_added = 0
+            print()
+
 
 def display_seats(auditorium, row_choice):
     """Display the seats of a row with a letter for each seat
     to simplify the selection (to book/free/add/remove a seat)."""
 
-    seat_letters = ""
-    seats = ""
     row = auditorium["rows"][row_choice - 1]
-    for s in range(len(row)):
-        seat_letters += f"{alphabet[s]} | "
-        seats += f"{row[s]} | "
-    print(f"{seat_sign}: available | {seat_booked}: booked ")
-    print(f"Seat number  - {seat_letters[:-2]}")
-    print(f"Availability - {seats[:-2]}")
+
+    seats_alpha_num(row)
+
+
+def choose_seat(row, action_seat):
+    if action_seat != "add":
+        while True:
+            seat_choice = input(f"Please choose a seat: ").upper()
+            seat_index = alphabet.index(seat_choice[0]) + len(alphabet) * (
+                int(seat_choice[1]) - 1
+            )
+            if seat_index > len(row) - 1:
+                print("That seat does not exist")
+                continue
+
+            while True:
+                confirm_seat = input(
+                    f"You chose to {action_seat} seat {seat_choice} (y/n): "
+                )
+                if confirm_seat == "y" or confirm_seat == "n":
+                    break
+            if confirm_seat == "y":
+                break
+
+    else:
+        while True:
+            print("Please enter the position of the seat you wish to add.")
+            print(
+                "Leave the field BLANK if you wish to add the seat at the end of the row."
+            )
+            seat_choice = input(f"\tEnter an existing seat or leave blank): ").upper()
+            if seat_choice != "":
+                seat_index = int(
+                    alphabet.index(seat_choice[0])
+                    + len(alphabet) * (int(seat_choice[1]) - 1)
+                )
+                print(f"len {len(row)}, {seat_index}")
+            if seat_choice == "" or 0 <= seat_index <= len(row) - 1:
+                while True:
+                    if seat_choice == "":
+                        confirm_seat = input(
+                            f"You chose to add a seat at the end of the row. (y/n) "
+                        )
+                    else:
+                        confirm_seat = input(
+                            f"You chose to add a seat at that position: {seat_choice}. (y/n) "
+                        )
+                    if confirm_seat == "y" or confirm_seat == "n":
+                        break
+                if confirm_seat == "y":
+                    break
+
+        if seat_choice == "":
+            row.append(seat_sign)
+        else:
+            row.insert(seat_index, seat_sign)
+
+    return seat_index
 
 
 def book_unbook_seats(auditorium, data, choice):
@@ -373,25 +451,10 @@ def book_unbook_seats(auditorium, data, choice):
             action_seat = "remove"
 
     row = auditorium["rows"][row_choice - 1]
+    subrows = len(row) // len(alphabet) + 1
+    print(f"subrows: {subrows}")
 
-    if action_seat != "add":
-        while True:
-            seat_choice = input(
-                f"Please choose a seat (A-{alphabet[len(row)-1]}): "
-            ).upper()
-            if seat_choice in alphabet[: len(row)]:
-                while True:
-                    confirm_seat = input(
-                        f"You chose to {action_seat} seat {seat_choice} (y/n): "
-                    )
-                    if confirm_seat == "y" or confirm_seat == "n":
-                        break
-                if confirm_seat == "y":
-                    break
-
-        seat_index = alphabet.index(seat_choice)
-
-    update = False
+    seat_index = choose_seat(row, action_seat)
 
     if action_seat == "book":
         if row[seat_index] != seat_booked:
@@ -405,34 +468,6 @@ def book_unbook_seats(auditorium, data, choice):
         del row[seat_index]
         update = True
     else:
-        while True:
-            print("Please enter the position of the seat you wish to add.")
-            print(
-                "Leave the field BLANK if you wish to add the seat at the end of the row."
-            )
-            seat_position = input(
-                f"\tYour choice (A-{alphabet[len(row)-1]} or leave blank): "
-            ).upper()
-            if seat_position == "" or seat_position in alphabet[: len(row)]:
-                while True:
-                    if seat_position == "":
-                        confirm_seat = input(
-                            f"You chose to add a seat at the end of the row. (y/n) "
-                        )
-                    else:
-                        confirm_seat = input(
-                            f"You chose to add a seat at that position: {seat_position}. (y/n) "
-                        )
-                    if confirm_seat == "y" or confirm_seat == "n":
-                        break
-                if confirm_seat == "y":
-                    break
-
-        if seat_position == "":
-            row.append(seat_sign)
-        else:
-            seat_index = alphabet.index(seat_position)
-            row.insert(seat_index, seat_sign)
         update = True
 
     if update:
@@ -454,23 +489,7 @@ def book_unbook_seats(auditorium, data, choice):
     elif action_seat == "add":
         print("The seat was added successfully.")
 
-    while True:
-        available_choices = ["1", "2", "exit"]
-        print("\nWhat would you like to do next?")
-        print("1. Back to the list of auditoriums")
-        print("2. Back to the main menu")
-        print("exit. Exit the program")
-        do_next = input("\tYour choice: ")
-        if do_next not in available_choices:
-            continue
-        break
-
-    if do_next == "1":
-        display_auditoriums(data)
-    elif do_next == "2":
-        main()
-    elif do_next == "exit":
-        exit()
+    menu_do_next(data)
 
 
 def display_auditoriums(data):
@@ -517,19 +536,10 @@ def display_auditorium_details(auditorium, data):
             f"{seat_sign}: available | {seat_booked}: booked | Seat number: A B C D..."
         )
         for r in range(len(auditorium["rows"])):
-            seat_letters = ""
-            seats = ""
             row = auditorium["rows"][r]
-            for s in range(len(row)):
-                seat_letters += f"{alphabet[s]} | "
-                seats += f"{row[s]} | "
-            print(f"Row {r+1}:")
-            print(f"\t{seat_letters[:-2]}")
-            print(f"\t{seats[:-2]}")
-        # for r in range(len(auditorium["rows"])):
-        #     #     # print(f'Row {r+1}: {auditorium["rows"][r]}')
-        #     print(f"Row {r+1}:\n{display_seats(auditorium, r+1)}")
-    print()
+            print(f"ROW {r+1}: {len(row)} seats")
+            seats_alpha_num(row)
+            print()
 
 
 def edit_auditorium_menu(auditorium, data):
